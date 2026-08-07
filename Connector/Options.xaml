@@ -29,6 +29,7 @@
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
             </Grid.RowDefinitions>
 
             <TextBlock VerticalAlignment="Center" Text="Auto connect equipment on start" />
@@ -200,11 +201,24 @@
                 IsChecked="{Binding AutoCoolCamera, Mode=TwoWay}"
                 Visibility="{Binding AutoConnectEquipment, Converter={StaticResource BooleanToVisibilityCollapsedConverter}}" />
 
-            <GroupBox
+            <TextBlock
                 Grid.Row="7"
+                Margin="0,12,0,0"
+                VerticalAlignment="Center"
+                Text="Custom equipment connection order" />
+            <CheckBox
+                Grid.Row="7"
+                Grid.Column="1"
+                Margin="5,12,0,0"
+                HorizontalAlignment="Left"
+                IsChecked="{Binding UseCustomDeviceConnectionOrder, Mode=TwoWay}" />
+
+            <GroupBox
+                Grid.Row="8"
                 Grid.ColumnSpan="2"
                 Margin="0,12,0,0"
-                Header="Device connection order">
+                Header="Device connection order"
+                Visibility="{Binding UseCustomDeviceConnectionOrder, Converter={StaticResource BooleanToVisibilityCollapsedConverter}}">
                 <ItemsControl ItemsSource="{Binding DeviceConnectionOrder}">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>

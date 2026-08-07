@@ -260,6 +260,14 @@ namespace NINA.Plugins.Connector
             }
         }
 
+        public bool UseCustomDeviceConnectionOrder {
+            get => PluginSettings.GetValueBoolean(ConnectionOrder.EnabledSettingName, false);
+            set {
+                PluginSettings.SetValueBoolean(ConnectionOrder.EnabledSettingName, value);
+                RaisePropertyChanged();
+            }
+        }
+
         public bool AutoCoolCamera {
             get => PluginSettings.GetValueBoolean(nameof(AutoCoolCamera), false);
             set {

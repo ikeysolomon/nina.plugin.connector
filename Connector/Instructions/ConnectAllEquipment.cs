@@ -18,6 +18,7 @@ namespace NINA.Plugins.Connector.Instructions {
 
     internal static class ConnectionOrder {
         internal const string SettingName = "DeviceConnectionOrder";
+        internal const string EnabledSettingName = "UseCustomDeviceConnectionOrder";
         internal const char Separator = '|';
 
         internal static readonly IReadOnlyList<string> Default = new List<string> {
@@ -150,7 +151,9 @@ namespace NINA.Plugins.Connector.Instructions {
             var errors = new List<Exception>();
             var pluginSettings = new PluginOptionsAccessor(profileService, Guid.Parse("52c17ee7-6d6c-4ee1-8fa0-85bcf6677bef"));
             var savedOrder = pluginSettings.GetValueString(ConnectionOrder.SettingName, null);
-            var devicesToConnect = ConnectionOrder.Normalize(savedOrder?.Split(ConnectionOrder.Separator, StringSplitOptions.RemoveEmptyEntries));
+            var devicesToConnect = pluginSettings.GetValueBoolean(ConnectionOrder.EnabledSettingName, false)
+                ? ConnectionOrder.Normalize(savedOrder?.Split(ConnectionOrder.Separator, StringSplitOptions.RemoveEmptyEntries))
+                : Devices;
 
             foreach(var device in devicesToConnect) {
                 if (!IsConnected(device)) {
