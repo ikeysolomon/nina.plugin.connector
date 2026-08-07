@@ -3,16 +3,45 @@ using NINA.Core.Model;
 using NINA.Core.Utility;
 using NINA.Equipment.Equipment;
 using NINA.Equipment.Interfaces.Mediator;
+using NINA.Profile;
 using NINA.Profile.Interfaces;
 using NINA.Sequencer.SequenceItem;
 using NINA.Sequencer.Validations;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.Composition;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
 namespace NINA.Plugins.Connector.Instructions {
+
+    internal static class ConnectionOrder {
+        internal const string SettingName = "DeviceConnectionOrder";
+        internal const char Separator = '|';
+
+        internal static readonly IReadOnlyList<string> Default = new List<string> {
+            "Camera",
+            "Filter Wheel",
+            "Focuser",
+            "Rotator",
+            "Telescope",
+            "Guider",
+            "Switch",
+            "Flat Panel",
+            "Weather",
+            "Dome",
+            "Safety Monitor"
+        };
+
+        internal static IEnumerable<string> Normalize(IEnumerable<string> devices) {
+            var configuredDevices = (devices ?? Enumerable.Empty<string>())
+                .Where(Default.Contains)
+                .Distinct(StringComparer.Ordinal)
+                .ToList();
+            return configuredDevices.Concat(Default.Where(device => !configuredDevices.Contains(device)));
+        }
+    }
 
     public class ConnectAllEquipment : SequenceItem, IValidatable {
         private IProfileService profileService;
@@ -53,19 +82,7 @@ namespace NINA.Plugins.Connector.Instructions {
             this.weatherDataMediator = weatherDataMediator;
             this.domeMediator = domeMediator;
             this.safetyMonitorMediator = safetyMonitorMediator;
-            Devices = new List<string>() {
-                "Camera",
-                "Filter Wheel",
-                "Focuser",
-                "Rotator",
-                "Telescope",
-                "Guider",
-                "Switch",
-                "Flat Panel",
-                "Weather",
-                "Dome",
-                "Safety Monitor"
-            };
+            Devices = ConnectionOrder.Default.ToList();
         }
 
         public List<string> Devices { get; }
@@ -131,8 +148,11 @@ namespace NINA.Plugins.Connector.Instructions {
 
         public override async Task Execute(IProgress<ApplicationStatus> progress, CancellationToken token) {
             var errors = new List<Exception>();
+            var pluginSettings = new PluginOptionsAccessor(profileService, Guid.Parse("52c17ee7-6d6c-4ee1-8fa0-85bcf6677bef"));
+            var savedOrder = pluginSettings.GetValueString(ConnectionOrder.SettingName, null);
+            var devicesToConnect = ConnectionOrder.Normalize(savedOrder?.Split(ConnectionOrder.Separator, StringSplitOptions.RemoveEmptyEntries));
 
-            foreach(var device in Devices) {
+            foreach(var device in devicesToConnect) {
                 if (!IsConnected(device)) {
                     var profileId = GetProfileId(device);
                     if (!(profileId == "No_Device" || profileId == "No_Guider")) {

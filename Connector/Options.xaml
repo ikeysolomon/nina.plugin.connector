@@ -28,6 +28,7 @@
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
             </Grid.RowDefinitions>
 
             <TextBlock VerticalAlignment="Center" Text="Auto connect equipment on start" />
@@ -198,6 +199,43 @@
                 VerticalAlignment="Center"
                 IsChecked="{Binding AutoCoolCamera, Mode=TwoWay}"
                 Visibility="{Binding AutoConnectEquipment, Converter={StaticResource BooleanToVisibilityCollapsedConverter}}" />
+
+            <GroupBox
+                Grid.Row="7"
+                Grid.ColumnSpan="2"
+                Margin="0,12,0,0"
+                Header="Device connection order">
+                <ItemsControl ItemsSource="{Binding DeviceConnectionOrder}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Grid Margin="5,2">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock VerticalAlignment="Center" Text="{Binding}" />
+                                <Button
+                                    Grid.Column="1"
+                                    Width="28"
+                                    Margin="8,0,0,0"
+                                    Command="{Binding DataContext.MoveDeviceConnectionOrderUpCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                    CommandParameter="{Binding}"
+                                    Content="&#x25B2;"
+                                    ToolTip="Move up" />
+                                <Button
+                                    Grid.Column="2"
+                                    Width="28"
+                                    Margin="4,0,0,0"
+                                    Command="{Binding DataContext.MoveDeviceConnectionOrderDownCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                    CommandParameter="{Binding}"
+                                    Content="&#x25BC;"
+                                    ToolTip="Move down" />
+                            </Grid>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </GroupBox>
         </Grid>
     </DataTemplate>
 

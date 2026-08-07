@@ -1,4 +1,5 @@
-﻿using NINA.Astrometry;
+﻿using CommunityToolkit.Mvvm.Input;
+using NINA.Astrometry;
 using NINA.Core.Model;
 using NINA.Core.Model.Equipment;
 using NINA.Core.Utility;
@@ -13,6 +14,7 @@ using NINA.Sequencer.Interfaces.Mediator;
 using NINA.WPF.Base.Interfaces.Mediator;
 using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.ComponentModel.Composition;
 using System.Linq;
@@ -61,6 +63,9 @@ namespace NINA.Plugins.Connector
             }
 
             this.PluginSettings = new PluginOptionsAccessor(profileService, Guid.Parse(this.Identifier));
+            this.DeviceConnectionOrder = new ObservableCollection<string>(LoadDeviceConnectionOrder());
+            this.MoveDeviceConnectionOrderUpCommand = new RelayCommand<string>(MoveDeviceConnectionOrderUp, CanMoveDeviceConnectionOrderUp);
+            this.MoveDeviceConnectionOrderDownCommand = new RelayCommand<string>(MoveDeviceConnectionOrderDown, CanMoveDeviceConnectionOrderDown);
 
             this.sequenceMediator = sequenceMediator;
             this.ProfileService = profileService;
@@ -79,6 +84,9 @@ namespace NINA.Plugins.Connector
         }
         public IPluginOptionsAccessor PluginSettings { get; }
         public IProfileService ProfileService { get; }
+        public ObservableCollection<string> DeviceConnectionOrder { get; }
+        public RelayCommand<string> MoveDeviceConnectionOrderUpCommand { get; }
+        public RelayCommand<string> MoveDeviceConnectionOrderDownCommand { get; }
 
         public override Task Initialize() {
             if(AutoConnectEquipment) { 
@@ -327,6 +335,41 @@ namespace NINA.Plugins.Connector
                 PluginSettings.SetValueDouble(nameof(RotatorPosition), value);
                 RaisePropertyChanged();
             }
+        }
+
+        private IEnumerable<string> LoadDeviceConnectionOrder() {
+            var savedOrder = PluginSettings.GetValueString(ConnectionOrder.SettingName, null);
+            return ConnectionOrder.Normalize(savedOrder?.Split(ConnectionOrder.Separator, StringSplitOptions.RemoveEmptyEntries));
+        }
+
+        private void MoveDeviceConnectionOrderUp(string device) {
+            MoveDeviceConnectionOrder(device, -1);
+        }
+
+        private void MoveDeviceConnectionOrderDown(string device) {
+            MoveDeviceConnectionOrder(device, 1);
+        }
+
+        private bool CanMoveDeviceConnectionOrderUp(string device) {
+            return DeviceConnectionOrder.IndexOf(device) > 0;
+        }
+
+        private bool CanMoveDeviceConnectionOrderDown(string device) {
+            var index = DeviceConnectionOrder.IndexOf(device);
+            return index >= 0 && index < DeviceConnectionOrder.Count - 1;
+        }
+
+        private void MoveDeviceConnectionOrder(string device, int offset) {
+            var currentIndex = DeviceConnectionOrder.IndexOf(device);
+            var targetIndex = currentIndex + offset;
+            if (currentIndex < 0 || targetIndex < 0 || targetIndex >= DeviceConnectionOrder.Count) {
+                return;
+            }
+
+            DeviceConnectionOrder.Move(currentIndex, targetIndex);
+            PluginSettings.SetValueString(ConnectionOrder.SettingName, string.Join(ConnectionOrder.Separator, DeviceConnectionOrder));
+            MoveDeviceConnectionOrderUpCommand.NotifyCanExecuteChanged();
+            MoveDeviceConnectionOrderDownCommand.NotifyCanExecuteChanged();
         }
 
 
