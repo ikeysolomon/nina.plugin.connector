@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 
 namespace NINA.Plugins.Connector
 {
@@ -6,6 +7,7 @@ namespace NINA.Plugins.Connector
     {
         // CONSTANTS
         internal const string CONNECTOR = "Connector";
+        internal static Guid PLUGIN_ID = Guid.Parse("52c17ee7-6d6c-4ee1-8fa0-85bcf6677bef");
 
         // DEVICE TYPE CONSTANTS
         internal const string CAMERA = "Camera";

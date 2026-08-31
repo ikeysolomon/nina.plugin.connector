@@ -79,6 +79,7 @@ namespace NINA.Plugins.Connector
             _applicationStatusMediator = applicationStatusMediator;
 
             ProfileService = profileService;
+
             PluginSettings = new PluginOptionsAccessor(profileService, Guid.Parse(Identifier));
             DeviceConnectionOrder = new ObservableCollection<string>(LoadDeviceConnectionOrder());
             MoveDeviceConnectionOrderUpCommand = new RelayCommand<string>(MoveDeviceConnectionOrderUp, CanMoveDeviceConnectionOrderUp);
@@ -91,49 +92,52 @@ namespace NINA.Plugins.Connector
         public RelayCommand<string> MoveDeviceConnectionOrderUpCommand { get; }
         public RelayCommand<string> MoveDeviceConnectionOrderDownCommand { get; }
 
-        public override Task Initialize()
+        public override async Task Initialize()
         {
-            if (AutoConnectEquipment)
-            {
-                _ = Task.Run(
-                    async () =>
+            if (!AutoConnectEquipment)
+                return;
+
+            _ = Task.Run(
+                async () =>
+                {
+                    while (!_sequenceMediator.Initialized)
+                        await Task.Delay(100);
+
+                    var ct = new CancellationToken();
+                    var progress = new Progress<ApplicationStatus>(p =>
                     {
-                        while (!_sequenceMediator.Initialized)
-                            await Task.Delay(100);
+                        p.Source = "Connector";
+                        _applicationStatusMediator.StatusUpdate(p);
+                    }) as IProgress<ApplicationStatus>;
 
-                        var ct = new CancellationToken();
-                        var progress = new Progress<ApplicationStatus>(p =>
-                        {
-                            p.Source = "Connector";
-                            _applicationStatusMediator.StatusUpdate(p);
-                        }) as IProgress<ApplicationStatus>;
+                    var connectEquipment = new ConnectAllEquipment(ProfileService,
+                                                                _cameraMediator,
+                                                                _fwMediator,
+                                                                _focuserMediator,
+                                                                _rotatorMediator,
+                                                                _telescopeMediator,
+                                                                _guiderMediator,
+                                                                _switchMediator,
+                                                                _flatDeviceMediator,
+                                                                _weatherDataMediator,
+                                                                _domeMediator,
+                                                                _safetyMonitorMediator);
 
-                        var connectEquipment = new ConnectAllEquipment(ProfileService,
-                                                                    _cameraMediator,
-                                                                    _fwMediator,
-                                                                    _focuserMediator,
-                                                                    _rotatorMediator,
-                                                                    _telescopeMediator,
-                                                                    _guiderMediator,
-                                                                    _switchMediator,
-                                                                    _flatDeviceMediator,
-                                                                    _weatherDataMediator,
-                                                                    _domeMediator,
-                                                                    _safetyMonitorMediator);
+                    var tasks = new List<Task>
+                    {
+                        UnparkTelescopeWhenEnabled(progress, ct),
+                        OpenFlatCoverWhenEnabled(progress, ct),
+                        ChangeFilterWhenEnabled(progress, ct),
+                        MoveFocuserWhenEnabled(ct),
+                        MoveRotatorWhenEnabled(ct),
+                        CoolCameraWhenEnabled(progress, ct)
+                    };
 
-                        await connectEquipment.Run(progress, ct);
-                        await UnparkTelescopeWhenEnabled(progress, ct);
-                        await OpenFlatCoverWhenEnabled(progress, ct);
-                        await ChangeFilterWhenEnabled(progress, ct);
-                        await MoveFocuserWhenEnabled(ct);
-                        await MoveRotatorWhenEnabled(ct);
-                        await CoolCameraWhenEnabled(progress, ct);
+                    await connectEquipment.Run(progress, ct);
+                    await Task.WhenAll(tasks);
 
-                        progress.Report(new ApplicationStatus() { Status = string.Empty });
-                    });
-            }
-
-            return Task.CompletedTask;
+                    progress.Report(new ApplicationStatus() { Status = string.Empty });
+                });
         }
 
         private async Task UnparkTelescopeWhenEnabled(IProgress<ApplicationStatus> progress, CancellationToken ct)
@@ -235,22 +239,6 @@ namespace NINA.Plugins.Connector
                 else
                     Notification.ShowWarning("Connector set to auto cool camera, but no camera could be connected!");
             }
-        }
-
-        private async Task RunAndCatchExceptionsAsync(Func<Task> action, string errorMessage)
-        {
-            _ = Task.Run(async () =>
-            {
-                try
-                {
-                    await action();
-                }
-                catch (Exception ex)
-                {
-                    Logger.Error(ex);
-                    Notification.ShowError($"{errorMessage}: {ex.Message}");
-                }
-            });
         }
 
         public bool AutoConnectEquipment
@@ -401,16 +389,33 @@ namespace NINA.Plugins.Connector
         {
             var currentIndex = DeviceConnectionOrder.IndexOf(device);
             var targetIndex = currentIndex + offset;
+
             if (currentIndex < 0 || targetIndex < 0 || targetIndex >= DeviceConnectionOrder.Count)
-            {
                 return;
-            }
 
             DeviceConnectionOrder.Move(currentIndex, targetIndex);
             PluginSettings.SetValueString(ConnectionOrder.SettingName, string.Join(ConnectionOrder.Separator, DeviceConnectionOrder));
+
             MoveDeviceConnectionOrderUpCommand.NotifyCanExecuteChanged();
             MoveDeviceConnectionOrderDownCommand.NotifyCanExecuteChanged();
         }
+
+        private async Task RunAndCatchExceptionsAsync(Func<Task> action, string errorMessage)
+        {
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    await action();
+                }
+                catch (Exception ex)
+                {
+                    Logger.Error(ex);
+                    Notification.ShowError($"{errorMessage}: {ex.Message}");
+                }
+            });
+        }
+
         public event PropertyChangedEventHandler PropertyChanged;
         protected void RaisePropertyChanged([CallerMemberName] string propertyName = null) =>
             this.PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));

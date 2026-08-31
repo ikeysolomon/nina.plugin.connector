@@ -8,43 +8,11 @@ using NINA.Sequencer.Validations;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.Composition;
-using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
 namespace NINA.Plugins.Connector.Instructions
 {
-    internal static class ConnectionOrder
-    {
-        internal const string SettingName = "DeviceConnectionOrder";
-        internal const string EnabledSettingName = "UseCustomDeviceConnectionOrder";
-        internal const char Separator = '|';
-
-        internal static readonly IReadOnlyList<string> Default = new List<string>
-        {
-            ConnectorConstants.CAMERA,
-            ConnectorConstants.FILTER_WHEEL,
-            ConnectorConstants.FOCUSER,
-            ConnectorConstants.ROTATOR,
-            ConnectorConstants.TELESCOPE,
-            ConnectorConstants.GUIDER,
-            ConnectorConstants.SWITCH,
-            ConnectorConstants.FLAT_PANEL,
-            ConnectorConstants.WEATHER,
-            ConnectorConstants.DOME,
-            ConnectorConstants.SAFETY_MONITOR
-        };
-
-        internal static IEnumerable<string> Normalize(IEnumerable<string> devices)
-        {
-            var configuredDevices = (devices ?? Enumerable.Empty<string>())
-                .Where(Default.Contains)
-                .Distinct(StringComparer.Ordinal)
-                .ToList();
-            return configuredDevices.Concat(Default.Where(device => !configuredDevices.Contains(device)));
-        }
-    }
-
     public class ConnectAllEquipment: SequenceItem, IValidatable
     {
         private readonly IProfileService _profileService;
@@ -128,7 +96,7 @@ namespace NINA.Plugins.Connector.Instructions
             };
         }
 
-        public string GetProfileId(string device)
+        public string GetDeviceProfileId(string device)
         {
             return device switch
             {
@@ -150,8 +118,9 @@ namespace NINA.Plugins.Connector.Instructions
         public override async Task Execute(IProgress<ApplicationStatus> progress, CancellationToken token)
         {
             var errors = new List<Exception>();
-            var pluginSettings = new PluginOptionsAccessor(_profileService, Guid.Parse("52c17ee7-6d6c-4ee1-8fa0-85bcf6677bef"));
+            var pluginSettings = new PluginOptionsAccessor(_profileService, ConnectorConstants.PLUGIN_ID);
             var savedOrder = pluginSettings.GetValueString(ConnectionOrder.SettingName, null);
+
             var devicesToConnect = pluginSettings.GetValueBoolean(ConnectionOrder.EnabledSettingName, false)
                 ? ConnectionOrder.Normalize(savedOrder?.Split(ConnectionOrder.Separator, StringSplitOptions.RemoveEmptyEntries))
                 : ConnectorConstants.Devices;
@@ -166,13 +135,13 @@ namespace NINA.Plugins.Connector.Instructions
                     continue;
                 }
 
-                var profileId = GetProfileId(device);
+                var deviceProfileId = GetDeviceProfileId(device);
 
-                if (!(profileId == "No_Device" || profileId == "No_Guider"))
+                if (!(deviceProfileId == "No_Device" || deviceProfileId == "No_Guider"))
                 {
                     var devices = await mediator.Rescan();
 
-                    if (devices.Contains(profileId))
+                    if (devices.Contains(deviceProfileId))
                     {
                         var connected = await mediator.Connect() && mediator.GetInfo().Connected;
                         if (!connected)
@@ -187,9 +156,6 @@ namespace NINA.Plugins.Connector.Instructions
                 throw new AggregateException(errors);
         }
 
-        public bool Validate()
-        {
-            return true;
-        }
+        public bool Validate() => true;
     }
 }
