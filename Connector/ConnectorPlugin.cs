@@ -80,6 +80,8 @@ namespace NINA.Plugins.Connector {
             DeviceConnectionOrder = new ObservableCollection<string>(LoadDeviceConnectionOrder());
             MoveDeviceConnectionOrderUpCommand = new RelayCommand<string>(MoveDeviceConnectionOrderUp, CanMoveDeviceConnectionOrderUp);
             MoveDeviceConnectionOrderDownCommand = new RelayCommand<string>(MoveDeviceConnectionOrderDown, CanMoveDeviceConnectionOrderDown);
+
+            ProfileService.ProfileChanged += ProfileService_ProfileChanged;
         }
 
         public IPluginOptionsAccessor PluginSettings { get; }
@@ -116,19 +118,13 @@ namespace NINA.Plugins.Connector {
                                                                 _domeMediator,
                                                                 _safetyMonitorMediator);
 
-                    var tasks = new List<Task>
-                    {
-                        UnparkTelescopeWhenEnabled(progress, ct),
-                        OpenFlatCoverWhenEnabled(progress, ct),
-                        ChangeFilterWhenEnabled(progress, ct),
-                        MoveFocuserWhenEnabled(ct),
-                        MoveRotatorWhenEnabled(ct),
-                        CoolCameraWhenEnabled(progress, ct)
-                    };
-
                     await connectEquipment.Run(progress, ct);
-
-                    await Task.WhenAll(tasks);
+                    await UnparkTelescopeWhenEnabled(progress, ct);
+                    await OpenFlatCoverWhenEnabled(progress, ct);
+                    await ChangeFilterWhenEnabled(progress, ct);
+                    await MoveFocuserWhenEnabled(ct);
+                    await MoveRotatorWhenEnabled(ct);
+                    await CoolCameraWhenEnabled(progress, ct);
 
                     progress.Report(new ApplicationStatus() { Status = string.Empty });
                 });
@@ -355,6 +351,16 @@ namespace NINA.Plugins.Connector {
 
             DeviceConnectionOrder.Move(currentIndex, targetIndex);
             PluginSettings.SetValueString(ConnectionOrder.SettingName, string.Join(ConnectionOrder.Separator, DeviceConnectionOrder));
+
+            MoveDeviceConnectionOrderUpCommand.NotifyCanExecuteChanged();
+            MoveDeviceConnectionOrderDownCommand.NotifyCanExecuteChanged();
+        }
+
+        private void ProfileService_ProfileChanged(object sender, EventArgs e) {
+            DeviceConnectionOrder.Clear();
+
+            foreach (var device in LoadDeviceConnectionOrder())
+                DeviceConnectionOrder.Add(device);
 
             MoveDeviceConnectionOrderUpCommand.NotifyCanExecuteChanged();
             MoveDeviceConnectionOrderDownCommand.NotifyCanExecuteChanged();
