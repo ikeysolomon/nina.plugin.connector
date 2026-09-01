@@ -92,7 +92,7 @@ namespace NINA.Plugins.Connector {
 
         public override async Task Initialize() {
             if (!AutoConnectEquipment)
-                return;
+                return Task.CompletedTask;
 
             _ = Task.Run(
                 async () => {
@@ -128,6 +128,8 @@ namespace NINA.Plugins.Connector {
 
                     progress.Report(new ApplicationStatus() { Status = string.Empty });
                 });
+
+            return Task.CompletedTask;
         }
 
         private async Task UnparkTelescopeWhenEnabled(IProgress<ApplicationStatus> progress, CancellationToken ct) {
