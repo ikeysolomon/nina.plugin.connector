@@ -11,8 +11,10 @@ using System.ComponentModel.Composition;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace NINA.Plugins.Connector.Instructions {
-    public class ConnectAllEquipment: SequenceItem, IValidatable {
+namespace NINA.Plugins.Connector.Instructions
+{
+    public class ConnectAllEquipment : SequenceItem, IValidatable
+    {
         private readonly IProfileService _profileService;
         private readonly ICameraMediator _cameraMediator;
         private readonly IFilterWheelMediator _fwMediator;
@@ -38,7 +40,8 @@ namespace NINA.Plugins.Connector.Instructions {
                                 IFlatDeviceMediator flatDeviceMediator,
                                 IWeatherDataMediator weatherDataMediator,
                                 IDomeMediator domeMediator,
-                                ISafetyMonitorMediator safetyMonitorMediator) {
+                                ISafetyMonitorMediator safetyMonitorMediator)
+        {
             _profileService = profileService;
             _cameraMediator = cameraMediator;
             _fwMediator = fwMediator;
@@ -53,7 +56,7 @@ namespace NINA.Plugins.Connector.Instructions {
             _safetyMonitorMediator = safetyMonitorMediator;
         }
 
-        private ConnectAllEquipment(ConnectAllEquipment other) 
+        private ConnectAllEquipment(ConnectAllEquipment other)
             : this(other._profileService,
                 other._cameraMediator,
                 other._fwMediator,
@@ -65,7 +68,8 @@ namespace NINA.Plugins.Connector.Instructions {
                 other._flatDeviceMediator,
                 other._weatherDataMediator,
                 other._domeMediator,
-                other._safetyMonitorMediator) {
+                other._safetyMonitorMediator)
+        {
             CopyMetaData(other);
         }
 
@@ -73,8 +77,10 @@ namespace NINA.Plugins.Connector.Instructions {
 
         public IList<string> Issues => new List<string>();
 
-        private MediatorWrapper GetMediator(string device) {
-            return device switch {
+        private MediatorWrapper GetMediator(string device)
+        {
+            return device switch
+            {
                 ConnectorConstants.CAMERA => new MediatorWrapper(_cameraMediator),
                 ConnectorConstants.FILTER_WHEEL => new MediatorWrapper(_fwMediator),
                 ConnectorConstants.FOCUSER => new MediatorWrapper(_focuserMediator),
@@ -90,8 +96,10 @@ namespace NINA.Plugins.Connector.Instructions {
             };
         }
 
-        public string GetDeviceProfileId(string device) {
-            return device switch {
+        public string GetDeviceProfileId(string device)
+        {
+            return device switch
+            {
                 ConnectorConstants.CAMERA => _profileService.ActiveProfile.CameraSettings.Id,
                 ConnectorConstants.FILTER_WHEEL => _profileService.ActiveProfile.FilterWheelSettings.Id,
                 ConnectorConstants.FOCUSER => _profileService.ActiveProfile.FocuserSettings.Id,
@@ -107,7 +115,8 @@ namespace NINA.Plugins.Connector.Instructions {
             };
         }
 
-        public override async Task Execute(IProgress<ApplicationStatus> progress, CancellationToken token) {
+        public override async Task Execute(IProgress<ApplicationStatus> progress, CancellationToken token)
+        {
             var errors = new List<Exception>();
             var pluginSettings = new PluginOptionsAccessor(_profileService, ConnectorConstants.PLUGIN_ID);
             var savedOrder = pluginSettings.GetValueString(ConnectionOrder.SettingName, null);
@@ -116,25 +125,31 @@ namespace NINA.Plugins.Connector.Instructions {
                 ? ConnectionOrder.Normalize(savedOrder?.Split(ConnectionOrder.Separator, StringSplitOptions.RemoveEmptyEntries))
                 : ConnectorConstants.Devices;
 
-            foreach (var device in devicesToConnect) {
+            foreach (var device in devicesToConnect)
+            {
                 var mediator = GetMediator(device);
 
-                if (mediator.GetInfo().Connected) {
+                if (mediator.GetInfo().Connected)
+                {
                     Logger.Info($"{device} is already connected");
                     continue;
                 }
 
                 var deviceProfileId = GetDeviceProfileId(device);
 
-                if (!(deviceProfileId == "No_Device" || deviceProfileId == "No_Guider")) {
+                if (!(deviceProfileId == "No_Device" || deviceProfileId == "No_Guider"))
+                {
                     var devices = await mediator.Rescan();
 
-                    if (devices.Contains(deviceProfileId)) {
+                    if (devices.Contains(deviceProfileId))
+                    {
                         var connected = await mediator.Connect() && mediator.GetInfo().Connected;
                         if (!connected)
                             errors.Add(new Exception($"Failed to connect to {device}"));
-                    } else { 
-                        errors.Add(new Exception($"Failed to connect to {device} as it was not found")); 
+                    }
+                    else
+                    {
+                        errors.Add(new Exception($"Failed to connect to {device} as it was not found"));
                     }
                 }
             }
