@@ -1,10 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
 
-namespace NINA.Plugins.Connector
-{
-    internal static class ConnectorConstants
-    {
+namespace NINA.Plugins.Connector {
+    internal static class ConnectorConstants {
         // CONSTANTS
         internal const string CONNECTOR = "Connector";
         internal static Guid PLUGIN_ID = Guid.Parse("52c17ee7-6d6c-4ee1-8fa0-85bcf6677bef");
@@ -12,7 +10,7 @@ namespace NINA.Plugins.Connector
         // DEVICE TYPE CONSTANTS
         internal const string CAMERA = "Camera";
         internal const string FILTER_WHEEL = "Filter Wheel";
-        internal const string FOCUSER = "FOCUSER";
+        internal const string FOCUSER = "Focuser";
         internal const string ROTATOR = "Rotator";
         internal const string TELESCOPE = "Telescope";
         internal const string GUIDER = "Guider";
@@ -22,8 +20,7 @@ namespace NINA.Plugins.Connector
         internal const string DOME = "Dome";
         internal const string SAFETY_MONITOR = "Safety Monitor";
 
-        internal static List<string> Devices = new()
-        {
+        internal static List<string> Devices = new() {
             CAMERA,
             FILTER_WHEEL,
             FOCUSER,
