@@ -84,6 +84,7 @@ namespace NINA.Plugins.Connector
             DeviceConnectionOrder = new ObservableCollection<string>(LoadDeviceConnectionOrder());
             MoveDeviceConnectionOrderUpCommand = new RelayCommand<string>(MoveDeviceConnectionOrderUp, CanMoveDeviceConnectionOrderUp);
             MoveDeviceConnectionOrderDownCommand = new RelayCommand<string>(MoveDeviceConnectionOrderDown, CanMoveDeviceConnectionOrderDown);
+            ProfileService.ProfileChanged += ProfileService_ProfileChanged;
         }
 
         public IPluginOptionsAccessor PluginSettings { get; }
@@ -92,10 +93,10 @@ namespace NINA.Plugins.Connector
         public RelayCommand<string> MoveDeviceConnectionOrderUpCommand { get; }
         public RelayCommand<string> MoveDeviceConnectionOrderDownCommand { get; }
 
-        public override async Task Initialize()
+        public override Task Initialize()
         {
             if (!AutoConnectEquipment)
-                return;
+                return Task.CompletedTask;
 
             _ = Task.Run(
                 async () =>
@@ -123,21 +124,18 @@ namespace NINA.Plugins.Connector
                                                                 _domeMediator,
                                                                 _safetyMonitorMediator);
 
-                    var tasks = new List<Task>
-                    {
-                        UnparkTelescopeWhenEnabled(progress, ct),
-                        OpenFlatCoverWhenEnabled(progress, ct),
-                        ChangeFilterWhenEnabled(progress, ct),
-                        MoveFocuserWhenEnabled(ct),
-                        MoveRotatorWhenEnabled(ct),
-                        CoolCameraWhenEnabled(progress, ct)
-                    };
-
                     await connectEquipment.Run(progress, ct);
-                    await Task.WhenAll(tasks);
+                    await UnparkTelescopeWhenEnabled(progress, ct);
+                    await OpenFlatCoverWhenEnabled(progress, ct);
+                    await ChangeFilterWhenEnabled(progress, ct);
+                    await MoveFocuserWhenEnabled(ct);
+                    await MoveRotatorWhenEnabled(ct);
+                    await CoolCameraWhenEnabled(progress, ct);
 
                     progress.Report(new ApplicationStatus() { Status = string.Empty });
                 });
+
+            return Task.CompletedTask;
         }
 
         private async Task UnparkTelescopeWhenEnabled(IProgress<ApplicationStatus> progress, CancellationToken ct)
@@ -145,13 +143,17 @@ namespace NINA.Plugins.Connector
             if (UnparkTelescope)
             {
                 if (_telescopeMediator.GetInfo().Connected)
+                {
                     await RunAndCatchExceptionsAsync(async () =>
                     {
                         Notification.ShowInformation($"Connector - Unparking telescope");
                         await _telescopeMediator.UnparkTelescope(progress, ct);
                     }, "Connector - An error occurred while unparking telescope");
+                }
                 else
+                {
                     Notification.ShowWarning("Connector set to auto unpark, but no telescope could be connected!");
+                }
             }
         }
 
@@ -168,48 +170,74 @@ namespace NINA.Plugins.Connector
                     }, "Connector - An error occurred while opening flat device cover");
                 }
                 else
+                {
                     Notification.ShowWarning("Connector set to auto open flat device cover, but no flat device could be connected!");
+                }
             }
         }
 
         private async Task ChangeFilterWhenEnabled(IProgress<ApplicationStatus> progress, CancellationToken ct)
         {
             if (ChangeFilter)
+            {
                 if (_fwMediator.GetInfo().Connected)
+                {
                     if (Filter != null)
+                    {
                         await RunAndCatchExceptionsAsync(async () =>
                         {
                             Notification.ShowInformation($"Changing filter to {Filter.Name}");
                             await _fwMediator.ChangeFilter(Filter, ct, progress);
                         }, "Connector - An error occurred while changing filter");
+                    }
                     else
-                        Notification.ShowWarning("Connector set to auto set filter wheel filter, but no filter wheel could be connected!");
+                    {
+                        Notification.ShowWarning("Connector set to auto set filter wheel filter, but no filter was selected!");
+                    }
+                }
+                else
+                {
+                    Notification.ShowWarning("Connector set to auto set filter wheel filter, but no filter wheel could be connected!");
+                }
+            }
         }
 
         private async Task MoveFocuserWhenEnabled(CancellationToken ct)
         {
             if (MoveFocuserToPosition)
+            {
                 if (_focuserMediator.GetInfo().Connected)
+                {
                     await RunAndCatchExceptionsAsync(async () =>
                     {
                         Notification.ShowInformation($"Moving focuser to position {FocuserPosition}");
                         await _focuserMediator.MoveFocuser(FocuserPosition, ct);
                     }, "Connector - An error occurred while moving focuser to position");
+                }
                 else
+                {
                     Notification.ShowWarning("Connector set to auto set focuser position, but no focuser could be connected!");
+                }
+            }
         }
 
         private async Task MoveRotatorWhenEnabled(CancellationToken ct)
         {
             if (MoveRotatorToPosition)
+            {
                 if (_rotatorMediator.GetInfo().Connected)
+                {
                     await RunAndCatchExceptionsAsync(async () =>
                         {
                             Notification.ShowInformation($"Connector - Moving rotator to position {RotatorPosition}");
                             await _rotatorMediator.MoveMechanical((float)RotatorPosition, ct);
                         }, "Connector - An error occurred while moving rotator to position");
+                }
                 else
+                {
                     Notification.ShowWarning("Connector set to auto set rotator position, but no rotator could be connected!");
+                }
+            }
         }
 
         private async Task CoolCameraWhenEnabled(IProgress<ApplicationStatus> progress, CancellationToken ct)
@@ -222,22 +250,30 @@ namespace NINA.Plugins.Connector
                     if (cameraInfo.CanSetTemperature)
                     {
                         if (ProfileService.ActiveProfile.CameraSettings.Temperature.HasValue)
+                        {
                             await RunAndCatchExceptionsAsync(async () =>
-                                {
-                                    await _cameraMediator.CoolCamera(
-                                        ProfileService.ActiveProfile.CameraSettings.Temperature.Value,
-                                        TimeSpan.FromMinutes(ProfileService.ActiveProfile.CameraSettings.CoolingDuration),
-                                        progress,
-                                        ct);
-                                }, "Connector - An error occurred while cooling the camera");
+                            {
+                                await _cameraMediator.CoolCamera(
+                                    ProfileService.ActiveProfile.CameraSettings.Temperature.Value,
+                                    TimeSpan.FromMinutes(ProfileService.ActiveProfile.CameraSettings.CoolingDuration),
+                                    progress,
+                                    ct);
+                            }, "Connector - An error occurred while cooling the camera");
+                        }
                         else
+                        {
                             Notification.ShowWarning("Connector - No cooling temperature set in the current profile. Skipped cooling camera!");
+                        }
                     }
                     else
+                    {
                         Notification.ShowWarning("Connector set to auto cool camera, but camaera has no cooler!");
+                    }
                 }
                 else
+                {
                     Notification.ShowWarning("Connector set to auto cool camera, but no camera could be connected!");
+                }
             }
         }
 
@@ -400,20 +436,28 @@ namespace NINA.Plugins.Connector
             MoveDeviceConnectionOrderDownCommand.NotifyCanExecuteChanged();
         }
 
+        private void ProfileService_ProfileChanged(object sender, EventArgs e)
+        {
+            DeviceConnectionOrder.Clear();
+
+            foreach (var device in LoadDeviceConnectionOrder())
+                DeviceConnectionOrder.Add(device);
+
+            MoveDeviceConnectionOrderUpCommand.NotifyCanExecuteChanged();
+            MoveDeviceConnectionOrderDownCommand.NotifyCanExecuteChanged();
+        }
+
         private async Task RunAndCatchExceptionsAsync(Func<Task> action, string errorMessage)
         {
-            _ = Task.Run(async () =>
+            try
             {
-                try
-                {
-                    await action();
-                }
-                catch (Exception ex)
-                {
-                    Logger.Error(ex);
-                    Notification.ShowError($"{errorMessage}: {ex.Message}");
-                }
-            });
+                await action();
+            }
+            catch (Exception ex)
+            {
+                Logger.Error(ex);
+                Notification.ShowError($"{errorMessage}: {ex.Message}");
+            }
         }
 
         public event PropertyChangedEventHandler PropertyChanged;

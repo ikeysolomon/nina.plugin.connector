@@ -13,7 +13,7 @@ using System.Threading.Tasks;
 
 namespace NINA.Plugins.Connector.Instructions
 {
-    public class ConnectAllEquipment: SequenceItem, IValidatable
+    public class ConnectAllEquipment : SequenceItem, IValidatable
     {
         private readonly IProfileService _profileService;
         private readonly ICameraMediator _cameraMediator;
@@ -30,17 +30,17 @@ namespace NINA.Plugins.Connector.Instructions
 
         [ImportingConstructor]
         public ConnectAllEquipment(IProfileService profileService,
-                                ICameraMediator cameraMediator,
-                                IFilterWheelMediator fwMediator,
-                                IFocuserMediator focuserMediator,
-                                IRotatorMediator rotatorMediator,
-                                ITelescopeMediator telescopeMediator,
-                                IGuiderMediator guiderMediator,
-                                ISwitchMediator switchMediator,
-                                IFlatDeviceMediator flatDeviceMediator,
-                                IWeatherDataMediator weatherDataMediator,
-                                IDomeMediator domeMediator,
-                                ISafetyMonitorMediator safetyMonitorMediator)
+                                   ICameraMediator cameraMediator,
+                                   IFilterWheelMediator fwMediator,
+                                   IFocuserMediator focuserMediator,
+                                   IRotatorMediator rotatorMediator,
+                                   ITelescopeMediator telescopeMediator,
+                                   IGuiderMediator guiderMediator,
+                                   ISwitchMediator switchMediator,
+                                   IFlatDeviceMediator flatDeviceMediator,
+                                   IWeatherDataMediator weatherDataMediator,
+                                   IDomeMediator domeMediator,
+                                   ISafetyMonitorMediator safetyMonitorMediator)
         {
             _profileService = profileService;
             _cameraMediator = cameraMediator;
