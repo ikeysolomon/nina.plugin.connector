@@ -130,6 +130,11 @@ namespace NINA.Plugins.Connector {
                 });
         }
 
+        public override Task Teardown() {
+            ProfileService.ProfileChanged -= ProfileService_ProfileChanged;
+            return base.Teardown();
+        }
+
         private async Task UnparkTelescopeWhenEnabled(IProgress<ApplicationStatus> progress, CancellationToken ct) {
             if (UnparkTelescope) {
                 if (_telescopeMediator.GetInfo().Connected) {
@@ -362,6 +367,7 @@ namespace NINA.Plugins.Connector {
             foreach (var device in LoadDeviceConnectionOrder())
                 DeviceConnectionOrder.Add(device);
 
+            RaisePropertyChanged(nameof(UseCustomDeviceConnectionOrder));
             MoveDeviceConnectionOrderUpCommand.NotifyCanExecuteChanged();
             MoveDeviceConnectionOrderDownCommand.NotifyCanExecuteChanged();
         }
